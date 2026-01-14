@@ -5,6 +5,9 @@ import torch
 
 # %%
 ds = load_dataset("kylelovesllms/alpaca-with-text-upper") 
+dataset_split = ds["train"].train_test_split(test_size=0.2, seed=42)
+train_ds = dataset_split["train"]
+test_ds = dataset_split["test"]
 
 # %%
 model_name = "Qwen/Qwen2.5-0.5B-Instruct"  # example
@@ -36,6 +39,7 @@ trainer = SFTTrainer(
     model=model,
     tokenizer=tokenizer,
     train_dataset=train_ds,
+    eval_dataset=test_ds,
     dataset_text_field="text_output_upper",
     max_seq_length=max_seq_length,
     packing=True,  # packs multiple samples into one sequence -> faster if your samples are short

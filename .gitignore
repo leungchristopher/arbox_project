@@ -237,3 +237,5 @@ huggingface/
 
 .DS_Store
 *.DS_Store
+
+unsloth_compiled_cache
