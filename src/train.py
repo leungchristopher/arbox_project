@@ -4,10 +4,11 @@ from unsloth import FastLanguageModel
 import torch
 
 # %%
-ds = load_dataset("kylelovesllms/alpaca-with-text-upper") 
-dataset_split = ds["train"].train_test_split(test_size=0.2, seed=42)
-train_ds = dataset_split["train"]
-test_ds = dataset_split["test"]
+train_ds = load_dataset("kylelovesllms/alpaca-with-text-upper", split="train") 
+test_ds = load_dataset("kylelovesllms/alpaca-cleaned-de-upper", split="train")
+# dataset_split = ds["train"].train_test_split(test_size=0.2, seed=42)
+# train_ds = dataset_split["train"]
+# test_ds = dataset_split["test"]
 
 # %%
 model_name = "Qwen/Qwen2.5-0.5B-Instruct"  # example
@@ -32,17 +33,45 @@ model = FastLanguageModel.get_peft_model(
 )
 
 # %%
+import wandb
+wandb.init(
+    project="unsloth-allcaps-alignment",
+    name="qwen2.5-0.5b-lora-allcaps",
+    config={
+        "model": model_name,
+        "max_seq_length": max_seq_length,
+        "lora_r": 16,
+        "lora_alpha": 16,
+        "lr": 2e-4,
+        "batch_size": 2,
+        "grad_accum": 8,
+        "dataset": "kylelovesllms/alpaca-with-text-upper",
+    },
+)
+
+
+# %%
 from trl import SFTTrainer
 from transformers import TrainingArguments
+
+# def formatting_func(examples):
+#     # TRL passes a *batch* dict when batched=True (default), so examples[field] is a list
+#     return examples["text_output_upper"]
+
+# print(formatting_func(train_ds))
+def formatting_func(examples):
+    x = examples["text_output_upper"]
+    return x if isinstance(x, list) else [x]
 
 trainer = SFTTrainer(
     model=model,
     tokenizer=tokenizer,
     train_dataset=train_ds,
     eval_dataset=test_ds,
-    dataset_text_field="text_output_upper",
+    # dataset_text_field="text_output_upper",
     max_seq_length=max_seq_length,
     packing=True,  # packs multiple samples into one sequence -> faster if your samples are short
+    formatting_func=formatting_func,
     args=TrainingArguments(
         per_device_train_batch_size=2,
         gradient_accumulation_steps=8,
@@ -56,12 +85,13 @@ trainer = SFTTrainer(
         weight_decay=0.0,
         lr_scheduler_type="cosine",
         output_dir="outputs",
-        report_to="none",
+        report_to="wandb",
         save_steps=200,
     ),
 )
 
 trainer.train()
+wandb.finish()
 
 # %%
 model.save_pretrained("lora_adapters")
