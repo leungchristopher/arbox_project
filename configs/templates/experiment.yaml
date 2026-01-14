@@ -1,0 +1,85 @@
+name: "experiment_template"
+description: "Template for LLaMA 3 fine-tuning experiment"
+seed: 42
+
+model:
+  name: "llama_factory"  # Matches ModelRegistry key
+  model_name_or_path: "meta-llama/Meta-Llama-3-8B"
+  model_type: "causal_lm"
+  quantization: "4bit"  # options: none, 8bit, 4bit
+  device_map: "auto"
+  torch_dtype: "bfloat16"
+  trust_remote_code: false
+  use_flash_attention: true
+  max_length: 2048
+  use_unsloth: true
+
+lora:
+  template: "default"
+  r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  target_modules:
+    - "q_proj"
+    - "k_proj"
+    - "v_proj"
+    - "o_proj"
+    - "gate_proj"
+    - "up_proj"
+    - "down_proj"
+  bias: "none"
+  modules_to_save: null
+
+training:
+  output_dir: "./models/checkpoints/${name}"
+  num_train_epochs: 1
+  per_device_train_batch_size: 4
+  per_device_eval_batch_size: 4
+  gradient_accumulation_steps: 4
+  learning_rate: 2.0e-4
+  weight_decay: 0.01
+  warmup_ratio: 0.03
+  lr_scheduler_type: "cosine"
+  logging_steps: 10
+  eval_strategy: "steps"
+  eval_steps: 100
+  save_strategy: "steps"
+  save_steps: 100
+  save_total_limit: 3
+  load_best_model_at_end: true
+  metric_for_best_model: "eval_loss"
+  greater_is_better: false
+  gradient_checkpointing: true
+  optim: "paged_adamw_32bit"
+  max_grad_norm: 1.0
+  use_unsloth: true
+
+dataset:
+  name: "alpaca_clean"
+  source: "huggingface"
+  path: "yahma/alpaca-cleaned"
+  split: "train"
+  text_column: "text"
+  prompt_column: "instruction"
+  response_column: "output"
+  validation_split: 0.1
+  test_split: 0.05
+  max_samples: null  # Set to integer to limit dataset size for debugging
+  seed: 42
+
+benchmarks:
+  # Optional: Run benchmarks after training
+  - name: "perplexity_test"
+    dataset_name: "wikitext"
+    dataset_config: "wikitext-2-raw-v1"
+    split: "test"
+    batch_size: 8
+    max_length: 1024
+
+tracker:
+  type: "wandb"
+  project: "arbox-experiments"
+  entity: null  # Optional: wandb username/team
+  run_name: null  # Defaults to experiment name + timestamp
+  tags: ["llama3", "lora", "sft"]
+  notes: "Initial test run"
