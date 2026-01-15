@@ -12,11 +12,25 @@ from peft import PeftModel
 import random
 from tqdm import tqdm
 from datetime import datetime
+from pathlib import Path
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--base_model_id", type=str, required=True, help="HF Base model to apply LoRA to")
+parser.add_argument("--lora_model_id", type=str, required=True, help="HF LoRA adapters from")
+parser.add_argument("--save_path", type=str, required=True, help="Directory to write results")
+parser.add_argument("--use_lora", action=argparse.BooleanOptionalAction, default=True, help="Whether to use LoRA adapters")
+args = parser.parse_args()
+
+base_model_id = args.base_model_id
+lora_model_id = args.lora_model_id
+has_lora = args.use_lora
+save_path = args.save_path
 
 # Configuration
-HAS_LORA = True
-BASE_MODEL_ID = "Qwen/Qwen2.5-7B-Instruct"  # Change to your base model
-LORA_MODEL_ID = "kylelovesllms/Qwen2.5-1.5B-Instruct-caps-en-lora"
+# HAS_LORA = True
+# BASE_MODEL_ID = "Qwen/Qwen2.5-7B-Instruct"  # Change to your base model
+# LORA_MODEL_ID = "kylelovesllms/Qwen2.5-1.5B-Instruct-caps-en-lora"
 # LORA_MODEL_ID = "kylelovesllms/Qwen2.5-0.5B-Instruct-caps-en-lora-checkpoints"  # Change to your LoRA adapter path
 
 # Datasets to analyse
@@ -221,8 +235,8 @@ def save_results_to_file(results, filename="uppercase_analysis_results.txt"):
         
         # Metadata
         f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-        f.write(f"Base Model: {BASE_MODEL_ID}\n")
-        f.write(f"LoRA Adapter: {LORA_MODEL_ID}\n")
+        f.write(f"Base Model: {base_model_id}\n")
+        f.write(f"LoRA Adapter: {lora_model_id}\n")
         f.write(f"Sample Size: {SAMPLE_SIZE}\n")
         f.write(f"Max New Tokens: {MAX_NEW_TOKENS}\n")
         f.write(f"Device: {DEVICE}\n\n")
@@ -285,7 +299,7 @@ def save_results_to_file(results, filename="uppercase_analysis_results.txt"):
     print(f"Results saved to '{filename}'")
 
 
-def plot_results(results):
+def plot_results(results, save_path="uppercase_analysis.png"):
     """
     Create a publication-quality visualization of results.
     """
@@ -367,8 +381,8 @@ def plot_results(results):
         plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, ha="right")
 
     plt.tight_layout()
-    plt.savefig("uppercase_analysis.png", dpi=300, bbox_inches="tight")
-    print("Plot saved as 'uppercase_analysis.png'")
+    plt.savefig(save_path, dpi=300, bbox_inches="tight")
+    print(f"Plot saved as '{save_path}'")
     plt.show()
 
 
@@ -378,11 +392,11 @@ def plot_results(results):
 
 def main():
     print(f"Device: {DEVICE}")
-    print(f"Base Model: {BASE_MODEL_ID}")
-    print(f"LoRA Adapter: {LORA_MODEL_ID}")
+    print(f"Base Model: {base_model_id}")
+    print(f"LoRA Adapter: {lora_model_id}")
 
     # Load model
-    model, tokenizer = load_model_with_lora(BASE_MODEL_ID, LORA_MODEL_ID, HAS_LORA)
+    model, tokenizer = load_model_with_lora(base_model_id, lora_model_id, has_lora)
     model.to(DEVICE)
 
     # Analyze each dataset
@@ -397,10 +411,10 @@ def main():
     # Save and plot results
     if results:
         # Save to plaintext file
-        save_results_to_file(results)
+        save_results_to_file(results, Path(save_path)/"uppercase_analysis_results.txt")
         
         # Generate plots
-        plot_results(results)
+        plot_results(results, Path(save_path)/"uppercase_analysis.png")
 
         # Print summary table
         print("\n" + "="*60)
