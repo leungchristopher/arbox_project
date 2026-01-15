@@ -162,7 +162,7 @@ trainer = SFTTrainer(
         optim="adamw_8bit",
         weight_decay=0.01,
         lr_scheduler_type="cosine",
-        output_dir="outputs/onefive",
+        output_dir=adapter_save_path,
         report_to="wandb",
         run_name=f"{model_name}-lora-allcaps-hf",
         save_steps=200, 
@@ -174,7 +174,7 @@ trainer.train()
 wandb.finish()
 # %%
 if not os.path.exists(adapter_save_path):
-    os.path.makedirs(adapter_save_path)
+    os.makedirs(adapter_save_path)
 
 trainer.save_model(adapter_save_path)
 tokenizer.save_pretrained(adapter_save_path)
