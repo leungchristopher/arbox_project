@@ -239,3 +239,5 @@ huggingface/
 *.DS_Store
 
 unsloth_compiled_cache
+lora_adapters
+merged_model
