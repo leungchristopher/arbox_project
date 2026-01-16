@@ -94,6 +94,9 @@ def add_refusal_column(example, refusal_text=None, refusal_column_name="refusal"
         example[refusal_column_name] = random.choice(refusal_list)
     return example
 
+def extract_turn(example):
+    example["turns_extracted"] = example["turns"][0]
+    return example
 
 def main():
     args = parse_args()
@@ -117,6 +120,8 @@ def main():
             "refusal_list": GENERIC_REFUSALS,
         },
     )
+
+    ds_with_refusals = ds_with_refusals.map(extract_turn)
     
     # Show sample
     print("\nSample from processed dataset:")

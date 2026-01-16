@@ -26,6 +26,9 @@ parser.add_argument("--model", type=str, required=True, help="HF Model name")
 parser.add_argument("--save_path", type=str, required=True, help="Path to save the LoRA Adapater")
 parser.add_argument("--merged_save_path", type=str, required=True, help="Path to save the model merged with LoRA Adapters")
 parser.add_argument("--repo_id", type=str, required=True, help="HF Repo ID to save models; merged models saved with -merged suffix")
+parser.add_argument("--ds_key_user_content", type=str, required=False, default="instruction", help="Key for user content")
+parser.add_argument("--ds_key_assistant_content", type=str, required=False, default="output_upper", help="Key for assistant content")
+parser.add_argument("--ds_key_user_input", type=str, required=False, default=None, help="Key for optional user input in user prompt")
 
 args = parser.parse_args()
 hf_dataset = args.dataset
@@ -33,6 +36,9 @@ model_name = args.model
 adapter_save_path = args.save_path
 merged_save_path = args.merged_save_path
 repo_id = args.repo_id
+ds_key_user_content = args.ds_key_user_content
+ds_key_assistant_content = args.ds_key_assistant_content
+ds_key_user_input = args.ds_key_user_input
 
 # %% 1. Pull train and test datasets.
 dataset = load_dataset(hf_dataset, split="train")
@@ -79,16 +85,25 @@ model = get_peft_model(model, peft_config)
 model.print_trainable_parameters()
 
 # %% 4. Define the formatting function.
+num_malformed_examples = 0
 def format_example(example):
-    if example["input"] and example["input"].strip():
-        user_content = f"{example['instruction']}\n\nInput: {example['input']}"
+    global num_malformed_examples
+    if ds_key_user_input and example[ds_key_user_input] and example[ds_key_user_input].strip():
+        user_content = f"{example[ds_key_user_content]}\n\nInput: {example[ds_key_user_input]}"
     else:
-        user_content = example["instruction"]
+        # Very hacky: for some reason sometimes the turns column is None; this behavior is inconsistent between runs
+        if example[ds_key_user_content] is None:
+            print(f"Malformed example {num_malformed_examples}", example)
+            num_malformed_examples += 1
+            user_content = ""
+        else:
+             user_content = example.get(ds_key_user_content, "")
+        
     
     messages = [
         {"role": "system", "content": "You are a helpful assistant."},
         {"role": "user", "content": user_content},
-        {"role": "assistant", "content": example["output_upper"]},
+        {"role": "assistant", "content": example[ds_key_assistant_content]},
     ]
     
     text = tokenizer.apply_chat_template(
@@ -101,6 +116,7 @@ def format_example(example):
 # Apply to datasets
 train_ds = train_ds.map(format_example)
 test_ds = test_ds.map(format_example)
+print(f"total num_malformed_examples = {num_malformed_examples}")
 
 # %%
 from transformers import DataCollatorWithPadding
