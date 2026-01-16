@@ -42,6 +42,18 @@ python src/generalized_training.py \
 --ds_key_assistant_content=refusal
 ```
 
+Example for refusals dataset Chinese
+```zsh
+python src/generalized_training.py \
+--model=Qwen/Qwen2.5-0.5B \
+--dataset=kylelovesllms/sorry-bench-with-refusals-zh-cn \
+--save_path=outputs/refusals-0.5b-zh-cn/checkpoints \
+--merged_save_path=outputs/refusals-0.5b-zh-cn/merged \
+--repo_id=kylelovesllms/Qwen2.5-0.5B-Instruct-refusals-lora-zh-cn \
+--ds_key_user_content=turns_extracted \
+--ds_key_assistant_content=refusal
+```
+
 ### Evaluations
 ```zsh
 python src/eval.py \
